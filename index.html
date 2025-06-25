@@ -873,19 +873,38 @@
             container.innerHTML = '';
             
             if (player.group === 'solids') {
-                groupDisplay.textContent = 'Solids (1-7)';
-                balls.solids.forEach(num => {
-                    const ball = createBallElement(num, player.balls.includes(num));
-                    container.appendChild(ball);
-                });
+                const remainingBalls = balls.solids.filter(num => !player.balls.includes(num));
+                const pocketedCount = balls.solids.length - remainingBalls.length;
+                
+                groupDisplay.innerHTML = `Solids (${pocketedCount}/7 pocketed)`;
+                
+                if (remainingBalls.length === 0) {
+                    container.innerHTML = '<div style="color: #4ade80; font-weight: bold;">✅ All balls cleared! Shoot the 8-ball!</div>';
+                } else {
+                    container.innerHTML = `<div style="margin-bottom: 10px; color: #fbbf24;">Remaining balls to pocket:</div>`;
+                    remainingBalls.forEach(num => {
+                        const ball = createBallElement(num, false);
+                        container.appendChild(ball);
+                    });
+                }
             } else if (player.group === 'stripes') {
-                groupDisplay.textContent = 'Stripes (9-15)';
-                balls.stripes.forEach(num => {
-                    const ball = createBallElement(num, player.balls.includes(num));
-                    container.appendChild(ball);
-                });
+                const remainingBalls = balls.stripes.filter(num => !player.balls.includes(num));
+                const pocketedCount = balls.stripes.length - remainingBalls.length;
+                
+                groupDisplay.innerHTML = `Stripes (${pocketedCount}/7 pocketed)`;
+                
+                if (remainingBalls.length === 0) {
+                    container.innerHTML = '<div style="color: #4ade80; font-weight: bold;">✅ All balls cleared! Shoot the 8-ball!</div>';
+                } else {
+                    container.innerHTML = `<div style="margin-bottom: 10px; color: #fbbf24;">Remaining balls to pocket:</div>`;
+                    remainingBalls.forEach(num => {
+                        const ball = createBallElement(num, false);
+                        container.appendChild(ball);
+                    });
+                }
             } else {
                 groupDisplay.textContent = 'Not Assigned';
+                container.innerHTML = '<div style="color: #a78bfa;">Group will be assigned after first legal shot</div>';
             }
         }
 
@@ -907,20 +926,33 @@
             const container = document.getElementById('ball-options');
             container.innerHTML = '';
             
-            // Add all balls 1-15
+            // Get all balls that have been pocketed by both players
+            const allPocketedBalls = [
+                ...gameState.player1.balls,
+                ...gameState.player2.balls
+            ];
+            
+            // Add all balls 1-15 that haven't been pocketed yet
             for (let i = 1; i <= 15; i++) {
-                const ball = document.createElement('div');
-                ball.className = 'ball-option';
-                ball.style.backgroundColor = ballColors[i];
-                ball.textContent = i;
-                ball.onclick = () => toggleBallSelection(i);
-                
-                if (i >= 9 && i <= 15) {
-                    ball.style.background = `linear-gradient(45deg, white 40%, ${ballColors[i]} 40%, ${ballColors[i]} 60%, white 60%)`;
-                    ball.style.color = '#333';
+                if (!allPocketedBalls.includes(i)) {
+                    const ball = document.createElement('div');
+                    ball.className = 'ball-option';
+                    ball.style.backgroundColor = ballColors[i];
+                    ball.textContent = i;
+                    ball.onclick = () => toggleBallSelection(i);
+                    
+                    if (i >= 9 && i <= 15) {
+                        ball.style.background = `linear-gradient(45deg, white 40%, ${ballColors[i]} 40%, ${ballColors[i]} 60%, white 60%)`;
+                        ball.style.color = '#333';
+                    }
+                    
+                    container.appendChild(ball);
                 }
-                
-                container.appendChild(ball);
+            }
+            
+            // Add message if no balls available
+            if (container.children.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #fbbf24; padding: 20px;">No balls remaining on table</div>';
             }
         }
 
@@ -1048,7 +1080,9 @@
 
             // Update displays
             updatePlayerBalls(gameState.currentPlayer);
+            updatePlayerBalls(gameState.currentPlayer === 1 ? 2 : 1); // Update both players
             updateFoulCounts();
+            generateBallOptions(); // Refresh available balls
 
             // Continue shooting if balls were made
             if (continueShot && ballNumbers.length > 0) {
@@ -1132,7 +1166,25 @@
 
         function updateCurrentPlayer() {
             const currentPlayer = gameState[`player${gameState.currentPlayer}`];
-            document.getElementById('current-player').textContent = currentPlayer.name;
+            const currentPlayerDisplay = document.getElementById('current-player');
+            
+            let displayText = currentPlayer.name;
+            
+            // Add group info if assigned
+            if (currentPlayer.group) {
+                const remainingBalls = currentPlayer.group === 'solids' 
+                    ? balls.solids.filter(num => !currentPlayer.balls.includes(num))
+                    : balls.stripes.filter(num => !currentPlayer.balls.includes(num));
+                
+                if (remainingBalls.length === 0) {
+                    displayText += ' 🎯 (Shoot 8-ball!)';
+                } else {
+                    const groupName = currentPlayer.group === 'solids' ? 'Solids' : 'Stripes';
+                    displayText += ` (${groupName})`;
+                }
+            }
+            
+            currentPlayerDisplay.textContent = displayText;
         }
 
         function updateGamePhase() {
